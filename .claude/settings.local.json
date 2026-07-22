@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npx install-electron)",
+      "Bash(node -e \"console.log\\(require\\('electron'\\)\\)\")",
+      "Bash(npx electron *)",
+      "Bash(node -e ' *)",
+      "Bash(\"e:/test/记账APP/node_modules/electron/dist/electron.exe\" --version)",
+      "Bash(rm -rf node_modules/electron)",
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npm install electron@31.7.7)",
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" node node_modules/electron/install.js)",
+      "Bash(cd \"e:/test/记账APP\" && npx electron _test.js 2>&1; rm _test.js 2>/dev/null)",
+      "Bash(\"e:/test/记账APP/node_modules/electron/dist/electron.exe\" -e \"console.log\\(typeof require\\('electron'\\)\\)\")",
+      "Bash(\"e:/test/记账APP/node_modules/electron/dist/electron.exe\" -e \"console.log\\(process.versions\\); console.log\\('---'\\); console.log\\(process.argv0\\); console.log\\('---'\\); console.log\\(process.execPath\\);\")",
+      "Bash(\"e:/test/记账APP/node_modules/electron/dist/electron.exe\" .)",
+      "Bash(npm start *)",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000/api/getCategories)"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "mumu-accounting",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "npm run build && node server.js",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "express": "^4.22.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "sql.js": "^1.14.1",
+    "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "electron": "^31.7.7",
+    "electron-builder": "^26.15.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1"
+  }
+}
