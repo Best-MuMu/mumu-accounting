@@ -1,32 +1,152 @@
-# React + TypeScript + Vite
+# 📒 暮暮记账本
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> 每一笔，都算数
 
-Currently, two official plugins are available:
+轻量、离线优先的个人桌面记账工具。记录每一次支出，掌握每一分钱。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## ✨ 功能
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 第一阶段（已完成）
 
-## Expanding the Oxlint configuration
+| 功能 | 说明 |
+|------|------|
+| 📝 **快速记账** | 输入金额、选择分类、选择日期、添加备注，10 秒内完成一笔记录 |
+| 📂 **二级分类** | 10 个一级分类（餐饮/交通/购物/居住/娱乐/医疗/教育/通讯/人情/其他），约 45 个二级分类 |
+| ➕ **自定义分类** | 可根据需要添加自定义二级分类 |
+| 📋 **支出明细** | 按日期倒序展示，支持按分类筛选 |
+| 📊 **月度统计** | 本月总支出、日均支出、支出最多分类、近 30 天每日支出柱状图 |
+| 🗑️ **删除记录** | 支持删除不需要的支出记录 |
+| 🎨 **暖色调主题** | 橙/黄色调，传统账本质感 |
+| 🔒 **离线可用** | 无需联网、无需账号、无需登录 |
+| 💾 **自动保存** | 数据实时保存到本地数据库，关掉应用数据不丢失 |
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+### 第二阶段（规划中）
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+- 📈 高级统计 — 分类饼图、环比对比、年度趋势折线图
+- 📤 数据导出 — 导出为 CSV 文件
+- 📥 数据导入 — 从 CSV 文件导入
+- ⏰ 预算提醒 — 按分类设置月度预算
+- 🔄 周期性支出 — 自动生成定期支出记录
+- 🔍 全文搜索 — 搜索备注和分类
+- 🌙 深色模式 — 浅色/深色主题切换
+
+---
+
+## 🚀 快速开始
+
+### 环境要求
+
+- [Node.js](https://nodejs.org/) 18.0 或更高版本
+- Windows 10+ 或 macOS 11+
+
+### 安装和启动
+
+```bash
+# 1. 进入项目目录
+cd 记账APP
+
+# 2. 安装依赖（仅首次需要）
+npm install
+
+# 3. 启动应用
+npm start
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+启动后，在浏览器中打开 **http://localhost:3000** 即可使用。
+
+### 停止应用
+
+在终端中按 `Ctrl + C` 停止服务器。
+
+---
+
+## 📁 项目结构
+
+```
+记账APP/
+├── CLAUDE.md              # 产品文档与设计决策
+├── README.md              # 本说明文档
+├── server.js              # 本地 Web 服务器
+├── package.json           # 项目配置
+├── vite.config.ts         # 前端构建配置
+├── index.html             # 入口 HTML
+├── electron/
+│   └── database.js        # 数据库层（SQLite）
+├── src/
+│   ├── main.tsx           # React 应用入口
+│   ├── App.tsx            # 主界面组件
+│   ├── App.css            # 暖色调样式
+│   ├── index.css          # 全局样式
+│   ├── api.ts             # HTTP API 封装
+│   └── types.ts           # TypeScript 类型定义
+├── public/
+│   └── favicon.svg        # 应用图标
+└── data/                  # 本地数据库文件（自动生成，已加入 .gitignore）
+    └── mumu_accounting.db
+```
+
+---
+
+## 🛠 技术栈
+
+| 技术 | 用途 |
+|------|------|
+| **Node.js + Express** | 本地 Web 服务器 |
+| **React 19** | 前端 UI 框架 |
+| **TypeScript** | 类型安全编程语言 |
+| **SQLite (sql.js)** | 本地数据库（纯 JS 实现） |
+| **Vite** | 前端构建工具 |
+
+---
+
+## 📖 使用指南
+
+### 记一笔账
+
+1. 打开应用，默认进入「记账」页
+2. 输入金额（自动聚焦金额输入框）
+3. 选择一级分类和二级分类
+4. 日期默认为今天（可修改）
+5. 可选填写备注（最多 200 字）
+6. 点击「记一笔」按钮
+
+### 查看明细
+
+1. 点击底部「明细」标签
+2. 顶部可按分类筛选
+3. 每条记录显示分类、金额、日期和备注
+4. 点击 `×` 可删除记录
+
+### 查看统计
+
+1. 点击底部「统计」标签
+2. 查看本月总支出、日均支出、支出最多分类
+3. 底部柱状图展示近 30 天每日支出趋势
+
+### 添加自定义分类
+
+1. 在记账页的分类选择区域，点击 `+` 按钮
+2. 输入一级和二级分类名称
+3. 点击「添加」
+
+---
+
+## ⚠️ 注意事项
+
+- 记账数据存储在项目目录的 `data/` 文件夹中，请勿删除
+- 如需迁移数据，复制整个 `data/` 文件夹到新位置即可
+- `data/` 已加入 `.gitignore`，不会被上传到 GitHub
+- 如需在多台电脑间同步数据，手动复制 `data/mumu_accounting.db` 文件
+
+---
+
+## 📄 许可
+
+本项目为个人使用项目。
+
+---
+
+> 📌 **设计文档**：[CLAUDE.md](CLAUDE.md)
+> 🔗 **GitHub 仓库**：https://github.com/Znbnie/mumu-accounting
