@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import type { Expense, Category, MonthlyStats } from './types'
 import { fenToYuan } from './types'
 import { api } from './api'
+import Tetris from './Tetris'
 import './App.css'
 
-type Tab = 'add' | 'list' | 'categories' | 'stats'
+type Tab = 'add' | 'list' | 'categories' | 'stats' | 'tetris'
 
 function App() {
   const [tab, setTab] = useState<Tab>('add')
@@ -400,6 +401,13 @@ function App() {
           </div>
         )}
 
+        {/* Tab: Tetris Game */}
+        {tab === 'tetris' && (
+          <div className="tab-content">
+            <Tetris />
+          </div>
+        )}
+
         {/* Tab: Categories */}
         {tab === 'categories' && (
           <div className="tab-content categories-view">
@@ -618,6 +626,13 @@ function App() {
         >
           <span className="tab-icon">📂</span>
           <span className="tab-label">分类</span>
+        </button>
+        <button
+          className={`tab-btn ${tab === 'tetris' ? 'active' : ''}`}
+          onClick={() => setTab('tetris')}
+        >
+          <span className="tab-icon">🎮</span>
+          <span className="tab-label">游戏</span>
         </button>
         <button
           className={`tab-btn ${tab === 'stats' ? 'active' : ''}`}

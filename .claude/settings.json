@@ -19,7 +19,12 @@
       "Bash(npx vite *)",
       "Bash(node server.js)",
       "Bash(curl -s -X POST http://localhost:3000/api/addExpense -H \"Content-Type: application/json\" --data-raw '{\"amount\":3500,\"category_l1\":\"餐饮\",\"category_l2\":\"午餐\",\"date\":\"2026-07-22\",\"note\":\"午饭\"}')",
-      "Bash(git commit -m '统计页改为月历样式，点击日期查看当天支出明细 *)"
+      "Bash(git commit -m '统计页改为月历样式，点击日期查看当天支出明细 *)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(npm start *)",
+      "Bash(git tag *)",
+      "Bash(git checkout *)",
+      "Bash(git commit -m '添加俄罗斯方块游戏 + 代码审查修复8个bug *)"
     ]
   }
 }
