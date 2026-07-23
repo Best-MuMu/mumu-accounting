@@ -4,7 +4,7 @@ import { fenToYuan } from './types'
 import { api } from './api'
 import './App.css'
 
-type Tab = 'add' | 'list' | 'stats'
+type Tab = 'add' | 'list' | 'categories' | 'stats'
 
 function App() {
   const [tab, setTab] = useState<Tab>('add')
@@ -23,10 +23,16 @@ function App() {
   const [filterL1, setFilterL1] = useState('全部')
   const [listPage, setListPage] = useState(1)
 
-  // Custom category modal
+  // Custom category modal (add)
   const [showAddCat, setShowAddCat] = useState(false)
   const [newCatL1, setNewCatL1] = useState('')
   const [newCatL2, setNewCatL2] = useState('')
+
+  // Category editing state
+  const [editingCat, setEditingCat] = useState<{ l1: string; l2: string } | null>(null)
+  const [editNewName, setEditNewName] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState<{ l1: string; l2: string } | null>(null)
+  const [deleteL1Confirm, setDeleteL1Confirm] = useState<string | null>(null)  // L1 name to delete
 
   // Load initial data
   useEffect(() => {
@@ -100,7 +106,8 @@ function App() {
 
   // Add custom category
   async function handleAddCustomCat() {
-    if (!newCatL1.trim() || !newCatL2.trim()) return
+    if (!newCatL1.trim()) return
+    // L2 can be empty — creates an empty L1 category
     const result = await api.addCustomCategory(newCatL1.trim(), newCatL2.trim())
     if (result.error) {
       alert(result.error)
@@ -108,6 +115,41 @@ function App() {
       setShowAddCat(false)
       setNewCatL1('')
       setNewCatL2('')
+      loadCategories()
+    }
+  }
+
+  // Delete category
+  async function handleDeleteCategory(l1: string, l2: string) {
+    const result = await api.deleteCategory(l1, l2)
+    if (result.error) {
+      alert(result.error)
+    } else {
+      setDeleteConfirm(null)
+      loadCategories()
+    }
+  }
+
+  // Delete entire L1 category
+  async function handleDeleteL1Category(l1: string) {
+    const result = await api.deleteL1Category(l1)
+    if (result.error) {
+      alert(result.error)
+    } else {
+      setDeleteL1Confirm(null)
+      loadCategories()
+    }
+  }
+
+  // Rename category
+  async function handleRenameCategory() {
+    if (!editingCat || !editNewName.trim()) return
+    const result = await api.renameCategory(editingCat.l1, editingCat.l2, editNewName.trim())
+    if (result.error) {
+      alert(result.error)
+    } else {
+      setEditingCat(null)
+      setEditNewName('')
       loadCategories()
     }
   }
@@ -272,6 +314,106 @@ function App() {
           </div>
         )}
 
+        {/* Tab: Categories */}
+        {tab === 'categories' && (
+          <div className="tab-content categories-view">
+            <div className="card">
+              <h3 style={{ marginBottom: 16, fontSize: 17, color: '#451A03' }}>分类管理</h3>
+              <p style={{ fontSize: 13, color: '#A8A29E', marginBottom: 16 }}>
+                🔒 = 系统内置（不可修改）&nbsp;&nbsp;✏️ = 可编辑/删除
+              </p>
+
+              {categories.map(cat => {
+                // Convert l2 array to items with is_default info
+                // Since the API doesn't return per-item is_default for all items,
+                // we treat the whole L1 group based on the group-level is_default
+                const items = cat.l2.map(name => ({
+                  name,
+                  isDefault: cat.is_default,
+                }))
+
+                return (
+                  <div key={cat.l1} className="category-group">
+                    <div className="category-l1-header">
+                      <span className="category-l1-name">
+                        {cat.is_default ? '🔒 ' : '✏️ '}
+                        {cat.l1}
+                      </span>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          className="btn-add-l2"
+                          onClick={() => {
+                            setNewCatL1(cat.l1)
+                            setNewCatL2('')
+                            setShowAddCat(true)
+                          }}
+                          title={`在「${cat.l1}」下添加小类`}
+                        >
+                          + 小类
+                        </button>
+                        {!cat.is_default && (
+                          <button
+                            className="btn-delete-l1"
+                            onClick={() => setDeleteL1Confirm(cat.l1)}
+                            title={`删除整个「${cat.l1}」分类`}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="category-l2-list">
+                      {items.map(item => (
+                        <div key={item.name} className="category-l2-item">
+                          {item.isDefault ? (
+                            <span className="cat-lock-icon" title="系统内置，不可修改">🔒</span>
+                          ) : (
+                            <span className="cat-lock-icon" title="用户添加，可编辑">✏️</span>
+                          )}
+                          <span className="category-l2-name">{item.name}</span>
+                          {!item.isDefault && (
+                            <div className="cat-actions">
+                              <button
+                                className="btn-cat-edit"
+                                onClick={() => {
+                                  setEditingCat({ l1: cat.l1, l2: item.name })
+                                  setEditNewName(item.name)
+                                }}
+                                title="修改名称"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                className="btn-cat-delete"
+                                onClick={() => setDeleteConfirm({ l1: cat.l1, l2: item.name })}
+                                title="删除"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Add new L1 category at bottom */}
+              <button
+                className="btn-add-l1"
+                onClick={() => {
+                  setNewCatL1('')
+                  setNewCatL2('')
+                  setShowAddCat(true)
+                }}
+              >
+                + 新建一级分类
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Tab: Stats */}
         {tab === 'stats' && (
           <div className="tab-content stats-view">
@@ -288,7 +430,7 @@ function App() {
                   </div>
                   <div className="stat-card">
                     <span className="stat-value">{stats.top_category}</span>
-                    <span className="stat-label">支出最多分类</span>
+                    <span className="stat-label">支出最多 · ¥{stats.top_category_amount.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -344,6 +486,13 @@ function App() {
           <span className="tab-label">明细</span>
         </button>
         <button
+          className={`tab-btn ${tab === 'categories' ? 'active' : ''}`}
+          onClick={() => { setTab('categories'); loadCategories() }}
+        >
+          <span className="tab-icon">📂</span>
+          <span className="tab-label">分类</span>
+        </button>
+        <button
           className={`tab-btn ${tab === 'stats' ? 'active' : ''}`}
           onClick={() => { setTab('stats'); loadStats() }}
         >
@@ -351,6 +500,85 @@ function App() {
           <span className="tab-label">统计</span>
         </button>
       </nav>
+
+      {/* Delete Confirm Modal */}
+      {deleteConfirm && (
+        <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>确认删除</h3>
+            <p style={{ marginBottom: 16, color: '#92400E' }}>
+              确定要删除分类「<strong>{deleteConfirm.l2}</strong>」吗？
+            </p>
+            <p style={{ fontSize: 12, color: '#A8A29E', marginBottom: 16 }}>
+              已有记账记录的分类名不会被清除，只是不再作为选项出现。
+            </p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setDeleteConfirm(null)}>取消</button>
+              <button
+                className="btn-primary"
+                style={{ background: '#EF4444' }}
+                onClick={() => handleDeleteCategory(deleteConfirm.l1, deleteConfirm.l2)}
+              >
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete L1 Category Modal */}
+      {deleteL1Confirm && (
+        <div className="modal-overlay" onClick={() => setDeleteL1Confirm(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>确认删除</h3>
+            <p style={{ marginBottom: 16, color: '#92400E' }}>
+              确定要删除整个「<strong>{deleteL1Confirm}</strong>」分类及其所有小类吗？
+            </p>
+            <p style={{ fontSize: 12, color: '#A8A29E', marginBottom: 16 }}>
+              此操作不可撤销。已有记账记录中的分类名不会被清除。
+            </p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setDeleteL1Confirm(null)}>取消</button>
+              <button
+                className="btn-primary"
+                style={{ background: '#EF4444' }}
+                onClick={() => handleDeleteL1Category(deleteL1Confirm)}
+              >
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Category Modal */}
+      {editingCat && (
+        <div className="modal-overlay" onClick={() => setEditingCat(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>修改分类名称</h3>
+            <div className="form-row">
+              <label>当前名称</label>
+              <p style={{ color: '#451A03', fontSize: 15, marginBottom: 12 }}>
+                {editingCat.l1} / {editingCat.l2}
+              </p>
+            </div>
+            <div className="form-row">
+              <label>新名称</label>
+              <input
+                type="text"
+                value={editNewName}
+                onChange={e => setEditNewName(e.target.value)}
+                placeholder="输入新名称"
+                autoFocus
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setEditingCat(null)}>取消</button>
+              <button className="btn-primary" onClick={handleRenameCategory}>确认修改</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Category Modal */}
       {showAddCat && (
@@ -367,12 +595,12 @@ function App() {
               />
             </div>
             <div className="form-row">
-              <label>二级分类</label>
+              <label>二级分类（可选）</label>
               <input
                 type="text"
                 value={newCatL2}
                 onChange={e => setNewCatL2(e.target.value)}
-                placeholder="如：夜宵"
+                placeholder="留空则只创建一级分类"
                 autoFocus
               />
             </div>

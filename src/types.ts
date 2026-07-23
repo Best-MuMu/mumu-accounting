@@ -14,12 +14,20 @@ export interface Expense {
 export interface Category {
   l1: string
   l2: string[]
+  is_default: boolean  // true = 系统内置分类（🔒不可动）, false = 用户添加（✏️可改可删）
+}
+
+export interface CategoryItem {
+  l1: string
+  l2: string
+  is_default: boolean
 }
 
 export interface MonthlyStats {
-  total: number           // in yuan (元)
-  daily_average: number   // in yuan (元)
+  total: number              // in yuan (元)
+  daily_average: number      // in yuan (元)
   top_category: string
+  top_category_amount: number // top category spending in yuan (元)
   daily_spending: DailyAmount[]
 }
 

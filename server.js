@@ -82,6 +82,36 @@ app.post('/api/addCustomCategory', (req, res) => {
   }
 });
 
+// Delete category (user-added only)
+app.delete('/api/deleteCategory', (req, res) => {
+  try {
+    const result = db.deleteCategory(req.body.l1, req.body.l2);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete entire L1 category (user-added only, or clear user L2s under built-in L1)
+app.delete('/api/deleteL1Category', (req, res) => {
+  try {
+    const result = db.deleteL1Category(req.body.l1);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Rename category (user-added only)
+app.put('/api/renameCategory', (req, res) => {
+  try {
+    const result = db.renameCategory(req.body.l1, req.body.l2, req.body.newName);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Get monthly stats
 app.get('/api/getMonthlyStats', (req, res) => {
   try {

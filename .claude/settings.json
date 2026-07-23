@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"$HOME/.ssh/\" 2>&1)",
+      "Read(//c/Users/Administrator/.ssh/**)",
+      "Bash(ssh-keygen -t ed25519 -C 2453786752@qq.com -f 'C:\\\\Users\\\\Administrator/.ssh/id_ed25519' -N '')",
+      "Bash(ssh -o StrictHostKeyChecking=no -T git@github.com)",
+      "Bash(ssh-add -l)",
+      "Bash(ssh -vT git@github.com)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git commit -m '添加详细 README 说明文档 *)",
+      "Bash(curl -s -X DELETE http://localhost:3000/api/deleteCategory -H \"Content-Type: application/json\" -d '{\"l1\":\"餐饮\",\"l2\":\"午餐\"}')",
+      "Bash(node -e ' *)",
+      "Bash(curl -s \"http://localhost:3000/api/getMonthlyStats?year=2026&month=7\")",
+      "Bash(npx tsc *)",
+      "Bash(npx kill-port *)",
+      "Bash(rm -rf data/mumu_accounting.db)",
+      "Bash(npx vite *)",
+      "Bash(node server.js)",
+      "Bash(curl -s -X POST http://localhost:3000/api/addExpense -H \"Content-Type: application/json\" --data-raw '{\"amount\":3500,\"category_l1\":\"餐饮\",\"category_l2\":\"午餐\",\"date\":\"2026-07-22\",\"note\":\"午饭\"}')"
+    ]
+  }
+}

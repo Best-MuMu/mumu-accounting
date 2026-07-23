@@ -58,6 +58,24 @@ export const api = {
       body: JSON.stringify({ l1, l2 }),
     }),
 
+  deleteCategory: (l1: string, l2: string) =>
+    request<{ error?: string; success?: boolean }>('/api/deleteCategory', {
+      method: 'DELETE',
+      body: JSON.stringify({ l1, l2 }),
+    }),
+
+  deleteL1Category: (l1: string) =>
+    request<{ error?: string; success?: boolean; message?: string }>('/api/deleteL1Category', {
+      method: 'DELETE',
+      body: JSON.stringify({ l1 }),
+    }),
+
+  renameCategory: (l1: string, l2: string, newName: string) =>
+    request<{ error?: string; success?: boolean }>('/api/renameCategory', {
+      method: 'PUT',
+      body: JSON.stringify({ l1, l2, newName }),
+    }),
+
   // Stats
   getMonthlyStats: (year: number, month: number) =>
     request<MonthlyStats>(`/api/getMonthlyStats?year=${year}&month=${month}`),

@@ -116,27 +116,22 @@ function addExpense({ amount, category_l1, category_l2, date, note }) {
 }
 
 function getExpenses({ page = 1, pageSize = 20, dateFrom, dateTo, catL1 } = {}) {
-  let sql = 'SELECT * FROM expenses WHERE 1=1';
-  const params = [];
+  let conditions = '1=1';
 
   if (dateFrom) {
-    sql += ' AND date >= ?';
-    params.push(dateFrom);
+    conditions += ` AND date >= '${esc(dateFrom)}'`;
   }
   if (dateTo) {
-    sql += ' AND date <= ?';
-    params.push(dateTo);
+    conditions += ` AND date <= '${esc(dateTo)}'`;
   }
   if (catL1) {
-    sql += ' AND category_l1 = ?';
-    params.push(catL1);
+    conditions += ` AND category_l1 = '${esc(catL1)}'`;
   }
 
-  sql += ' ORDER BY date DESC, created_at DESC';
-  sql += ' LIMIT ? OFFSET ?';
-  params.push(pageSize, (page - 1) * pageSize);
+  const offset = (page - 1) * pageSize;
+  const sql = `SELECT * FROM expenses WHERE ${conditions} ORDER BY date DESC, created_at DESC LIMIT ${pageSize} OFFSET ${offset}`;
 
-  const result = db.exec(sql, params);
+  const result = db.exec(sql);
   if (result.length === 0) return [];
 
   const columns = result[0].columns;
@@ -162,7 +157,7 @@ function deleteExpense(id) {
 }
 
 function getCategories() {
-  const result = db.exec('SELECT l1, l2 FROM categories ORDER BY id');
+  const result = db.exec('SELECT l1, l2, is_default FROM categories ORDER BY id');
   if (result.length === 0) return [];
 
   const rows = result[0].values;
@@ -172,24 +167,103 @@ function getCategories() {
   for (const row of rows) {
     const l1 = row[0];
     const l2 = row[1];
+    const isDefault = row[2];
     if (l1 !== currentL1) {
-      categories.push({ l1, l2: [l2] });
+      categories.push({ l1, l2: [l2], is_default: isDefault === 1 });
       currentL1 = l1;
     } else {
       categories[categories.length - 1].l2.push(l2);
+      // For L1, if any L2 is user-added, mark whole L1 as editable
+      if (isDefault === 0) {
+        categories[categories.length - 1].is_default = false;
+      }
     }
   }
   return categories;
 }
 
+// Helper: escape single quotes in SQL strings
+function esc(s) { return s.replace(/'/g, "''"); }
+
 function addCustomCategory(l1, l2) {
-  // Check if exists
-  const exists = db.exec('SELECT COUNT(*) as cnt FROM categories WHERE l1=? AND l2=?', [l1, l2]);
+  // If L2 is empty, create an empty L1 category with a placeholder
+  if (!l2 || l2.trim() === '') {
+    // Check if L1 already exists
+    const exists = db.exec(`SELECT COUNT(*) as cnt FROM categories WHERE l1='${esc(l1)}'`);
+    if (exists.length > 0 && exists[0].values[0][0] > 0) {
+      return { error: '该一级分类已存在' };
+    }
+    db.run('INSERT INTO categories (l1, l2, is_default) VALUES (?, ?, 0)', [l1.trim(), '(空)']);
+    saveToDisk();
+    return { success: true };
+  }
+
+  // Normal L2 addition - check if exists
+  const exists = db.exec(`SELECT COUNT(*) as cnt FROM categories WHERE l1='${esc(l1)}' AND l2='${esc(l2)}'`);
   if (exists.length > 0 && exists[0].values[0][0] > 0) {
     return { error: '该分类已存在' };
   }
 
   db.run('INSERT INTO categories (l1, l2, is_default) VALUES (?, ?, 0)', [l1, l2]);
+  saveToDisk();
+  return { success: true };
+}
+
+function deleteCategory(l1, l2) {
+  // Check if it's a default category — refuse to delete
+  const check = db.exec(`SELECT is_default FROM categories WHERE l1='${esc(l1)}' AND l2='${esc(l2)}'`);
+  if (check.length === 0 || check[0].values.length === 0) {
+    return { error: '分类不存在' };
+  }
+  if (check[0].values[0][0] === 1) {
+    return { error: '系统内置分类不能删除' };
+  }
+
+  db.run(`DELETE FROM categories WHERE l1='${esc(l1)}' AND l2='${esc(l2)}' AND is_default=0`);
+  saveToDisk();
+  return { success: true };
+}
+
+function deleteL1Category(l1) {
+  // Check if this L1 has any built-in categories (if so, can't delete entire L1)
+  const defaultCount = db.exec(`SELECT COUNT(*) as cnt FROM categories WHERE l1='${esc(l1)}' AND is_default=1`);
+  const defaultCnt = defaultCount.length > 0 ? defaultCount[0].values[0][0] : 0;
+
+  if (defaultCnt > 0) {
+    // This is a built-in L1 — only delete user-added L2s under it
+    db.run(`DELETE FROM categories WHERE l1='${esc(l1)}' AND is_default=0`);
+    saveToDisk();
+    return { success: true, message: '已删除该分类下的所有自定义小类' };
+  }
+
+  // User-created L1 — delete all L2s under it
+  db.run(`DELETE FROM categories WHERE l1='${esc(l1)}' AND is_default=0`);
+  saveToDisk();
+  return { success: true, message: '已删除整个一级分类' };
+}
+
+function renameCategory(l1, l2, newName) {
+  // Check if it's a default category — refuse to rename
+  const check = db.exec(`SELECT is_default FROM categories WHERE l1='${esc(l1)}' AND l2='${esc(l2)}'`);
+  if (check.length === 0 || check[0].values.length === 0) {
+    return { error: '分类不存在' };
+  }
+  if (check[0].values[0][0] === 1) {
+    return { error: '系统内置分类不能修改' };
+  }
+
+  // Check if new name already exists
+  const exists = db.exec(`SELECT COUNT(*) as cnt FROM categories WHERE l1='${esc(l1)}' AND l2='${esc(newName)}'`);
+  if (exists.length > 0 && exists[0].values[0][0] > 0) {
+    return { error: '该分类名已存在' };
+  }
+
+  // Update category name in categories table
+  db.run(`UPDATE categories SET l2='${esc(newName)}' WHERE l1='${esc(l1)}' AND l2='${esc(l2)}' AND is_default=0`);
+
+  // Update all existing expenses that use this category
+  db.run(`UPDATE expenses SET category_l2='${esc(newName)}' WHERE category_l1='${esc(l1)}' AND category_l2='${esc(l2)}'`);
+
   saveToDisk();
   return { success: true };
 }
@@ -203,15 +277,12 @@ function getMonthlyStats(year, month) {
     monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   }
 
-  // Total spending
   const totalResult = db.exec(
-    'SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE date >= ? AND date < ?',
-    [monthStart, monthEnd]
+    `SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE date >= '${esc(monthStart)}' AND date < '${esc(monthEnd)}'`
   );
   const totalFen = totalResult.length > 0 ? totalResult[0].values[0][0] : 0;
   const total = totalFen / 100;
 
-  // Daily average
   const now = new Date();
   const daysInMonth = new Date(year, month, 0).getDate();
   const daysElapsed = (now.getFullYear() === year && now.getMonth() + 1 === month)
@@ -219,29 +290,28 @@ function getMonthlyStats(year, month) {
     : daysInMonth;
   const dailyAverage = daysElapsed > 0 ? total / daysElapsed : 0;
 
-  // Top category
   const topResult = db.exec(
-    'SELECT category_l1 FROM expenses WHERE date >= ? AND date < ? GROUP BY category_l1 ORDER BY SUM(amount) DESC LIMIT 1',
-    [monthStart, monthEnd]
+    `SELECT category_l1, SUM(amount) as total FROM expenses WHERE date >= '${esc(monthStart)}' AND date < '${esc(monthEnd)}' GROUP BY category_l1 ORDER BY total DESC LIMIT 1`
   );
   const topCategory = topResult.length > 0 && topResult[0].values.length > 0
     ? topResult[0].values[0][0]
     : '暂无';
+  const topCategoryAmount = topResult.length > 0 && topResult[0].values.length > 0
+    ? (topResult[0].values[0][1] / 100)
+    : 0;
 
-  // Daily spending for last 30 days
   const today = now.toISOString().split('T')[0];
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const dailyResult = db.exec(
-    'SELECT date, SUM(amount) FROM expenses WHERE date >= ? AND date <= ? GROUP BY date ORDER BY date',
-    [thirtyDaysAgo, today]
+    `SELECT date, SUM(amount) FROM expenses WHERE date >= '${esc(thirtyDaysAgo)}' AND date <= '${esc(today)}' GROUP BY date ORDER BY date`
   );
 
   const dailySpending = dailyResult.length > 0
     ? dailyResult[0].values.map(row => ({ date: row[0], amount: row[1] / 100 }))
     : [];
 
-  return { total, daily_average: dailyAverage, top_category: topCategory, daily_spending: dailySpending };
+  return { total, daily_average: dailyAverage, top_category: topCategory, top_category_amount: topCategoryAmount, daily_spending: dailySpending };
 }
 
 module.exports = {
@@ -254,5 +324,9 @@ module.exports = {
   deleteExpense,
   getCategories,
   addCustomCategory,
+  deleteCategory,
+  deleteL1Category,
+  renameCategory,
   getMonthlyStats,
 };
+
