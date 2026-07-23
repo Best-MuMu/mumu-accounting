@@ -268,6 +268,18 @@ function renameCategory(l1, l2, newName) {
   return { success: true };
 }
 
+function getExpensesByDate(date) {
+  const result = db.exec(`SELECT * FROM expenses WHERE date='${esc(date)}' ORDER BY amount DESC`);
+  if (result.length === 0) return [];
+
+  const columns = result[0].columns;
+  return result[0].values.map(row => {
+    const obj = {};
+    columns.forEach((col, i) => { obj[col] = row[i]; });
+    return obj;
+  });
+}
+
 function getMonthlyStats(year, month) {
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
   let monthEnd;
@@ -323,6 +335,7 @@ module.exports = {
   updateExpense,
   deleteExpense,
   getCategories,
+  getExpensesByDate,
   addCustomCategory,
   deleteCategory,
   deleteL1Category,

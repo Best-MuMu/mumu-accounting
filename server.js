@@ -112,6 +112,17 @@ app.put('/api/renameCategory', (req, res) => {
   }
 });
 
+// Get expenses by exact date
+app.get('/api/getExpensesByDate', (req, res) => {
+  try {
+    const { date } = req.query;
+    const expenses = db.getExpensesByDate(date);
+    res.json(expenses);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Get monthly stats
 app.get('/api/getMonthlyStats', (req, res) => {
   try {

@@ -34,6 +34,13 @@ function App() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ l1: string; l2: string } | null>(null)
   const [deleteL1Confirm, setDeleteL1Confirm] = useState<string | null>(null)  // L1 name to delete
 
+  // Calendar view state
+  const [calYear, setCalYear] = useState(new Date().getFullYear())
+  const [calMonth, setCalMonth] = useState(new Date().getMonth() + 1) // 1-12
+  const [monthlyExpenses, setMonthlyExpenses] = useState<Expense[]>([]) // all expenses this month
+  const [selectedDate, setSelectedDate] = useState<string | null>(null) // 'YYYY-MM-DD'
+  const [dayExpenses, setDayExpenses] = useState<Expense[]>([])
+
   // Load initial data
   useEffect(() => {
     loadCategories()
@@ -153,6 +160,85 @@ function App() {
       loadCategories()
     }
   }
+
+  // Calendar functions
+  function loadMonthlyExpenses(year: number, month: number) {
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    api.getExpenses({ page: 1, pageSize: 500, dateFrom: monthStart, dateTo: monthEnd })
+      .then(setMonthlyExpenses)
+      .catch(console.error)
+  }
+
+  function goToPrevMonth() {
+    if (calMonth === 1) { setCalYear(calYear - 1); setCalMonth(12) }
+    else { setCalMonth(calMonth - 1) }
+  }
+
+  function goToNextMonth() {
+    if (calMonth === 12) { setCalYear(calYear + 1); setCalMonth(1) }
+    else { setCalMonth(calMonth + 1) }
+  }
+
+  function getCalendarDays() {
+    const firstDay = new Date(calYear, calMonth - 1, 1).getDay() // 0=Sun
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate()
+    const daysInPrevMonth = new Date(calYear, calMonth - 1, 0).getDate()
+    const todayStr = new Date().toISOString().split('T')[0]
+
+    // Build date → total map
+    const dailyTotals: Record<string, number> = {}
+    for (const exp of monthlyExpenses) {
+      dailyTotals[exp.date] = (dailyTotals[exp.date] || 0) + exp.amount
+    }
+
+    const cells: { date: string; day: number; isCurrentMonth: boolean; isToday: boolean; total: number }[] = []
+
+    // Previous month padding
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const day = daysInPrevMonth - i
+      const m = calMonth === 1 ? 12 : calMonth - 1
+      const y = calMonth === 1 ? calYear - 1 : calYear
+      const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      cells.push({ date: dateStr, day, isCurrentMonth: false, isToday: dateStr === todayStr, total: dailyTotals[dateStr] || 0 })
+    }
+
+    // Current month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      cells.push({ date: dateStr, day, isCurrentMonth: true, isToday: dateStr === todayStr, total: dailyTotals[dateStr] || 0 })
+    }
+
+    // Next month padding (fill to 6 rows)
+    const remaining = 42 - cells.length
+    for (let day = 1; day <= remaining; day++) {
+      const m = calMonth === 12 ? 1 : calMonth + 1
+      const y = calMonth === 12 ? calYear + 1 : calYear
+      const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      cells.push({ date: dateStr, day, isCurrentMonth: false, isToday: dateStr === todayStr, total: dailyTotals[dateStr] || 0 })
+    }
+
+    return cells
+  }
+
+  async function handleDayClick(date: string) {
+    setSelectedDate(date)
+    try {
+      const expenses = await api.getExpensesByDate(date)
+      setDayExpenses(expenses)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // Reload monthly data when month changes
+  useEffect(() => {
+    if (tab === 'stats') {
+      loadMonthlyExpenses(calYear, calMonth)
+      loadStats()
+    }
+  }, [calYear, calMonth, tab])
 
   // Filter expenses
   function handleFilterChange(l1: string) {
@@ -417,54 +503,95 @@ function App() {
         {/* Tab: Stats */}
         {tab === 'stats' && (
           <div className="tab-content stats-view">
-            {stats ? (
-              <>
-                <div className="stats-cards">
-                  <div className="stat-card">
-                    <span className="stat-value">¥{stats.total.toFixed(2)}</span>
-                    <span className="stat-label">本月总支出</span>
-                  </div>
-                  <div className="stat-card">
-                    <span className="stat-value">¥{stats.daily_average.toFixed(2)}</span>
-                    <span className="stat-label">日均支出</span>
-                  </div>
-                  <div className="stat-card">
-                    <span className="stat-value">{stats.top_category}</span>
-                    <span className="stat-label">支出最多 · ¥{stats.top_category_amount.toFixed(2)}</span>
-                  </div>
+            {/* Summary cards */}
+            {stats && (
+              <div className="stats-cards">
+                <div className="stat-card">
+                  <span className="stat-value">¥{stats.total.toFixed(2)}</span>
+                  <span className="stat-label">本月总支出</span>
                 </div>
-
-                {stats.daily_spending.length > 0 && (
-                  <div className="chart-container card">
-                    <h3>近30天每日支出</h3>
-                    <div className="bar-chart">
-                      {stats.daily_spending.map((day, i) => {
-                        const maxAmount = Math.max(...stats.daily_spending.map(d => d.amount), 1)
-                        const height = (day.amount / maxAmount) * 120
-                        return (
-                          <div key={i} className="bar-col">
-                            <div className="bar-wrapper">
-                              <div
-                                className="bar"
-                                style={{ height: `${Math.max(height, 1)}px` }}
-                              />
-                            </div>
-                            <span className="bar-label">
-                              {day.date.slice(5)}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="empty-state">
-                <div className="empty-icon">📊</div>
-                <p>加载中…</p>
+                <div className="stat-card">
+                  <span className="stat-value">¥{stats.daily_average.toFixed(2)}</span>
+                  <span className="stat-label">日均支出</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">{stats.top_category}</span>
+                  <span className="stat-label">最多 · ¥{stats.top_category_amount.toFixed(2)}</span>
+                </div>
               </div>
             )}
+
+            {/* Calendar */}
+            <div className="card calendar-card">
+              {/* Month header */}
+              <div className="calendar-header">
+                <button className="cal-nav-btn" onClick={goToPrevMonth}>◀</button>
+                <span className="cal-month-title">
+                  {calYear}年{calMonth}月
+                </span>
+                <button className="cal-nav-btn" onClick={goToNextMonth}>▶</button>
+              </div>
+
+              {/* Weekday labels */}
+              <div className="calendar-weekdays">
+                {['日', '一', '二', '三', '四', '五', '六'].map(w => (
+                  <span key={w} className="cal-weekday">{w}</span>
+                ))}
+              </div>
+
+              {/* Day grid */}
+              <div className="calendar-grid">
+                {getCalendarDays().map((cell, i) => (
+                  <div
+                    key={i}
+                    className={`cal-day ${!cell.isCurrentMonth ? 'cal-day-other' : ''} ${cell.isToday ? 'cal-day-today' : ''} ${cell.total > 0 ? 'cal-day-has-data' : ''}`}
+                    onClick={() => {
+                      if (cell.isCurrentMonth) {
+                        handleDayClick(cell.date)
+                      }
+                    }}
+                  >
+                    <span className="cal-day-num">{cell.day}</span>
+                    {cell.total > 0 && (
+                      <span className="cal-day-amount">¥{(cell.total / 100).toFixed(0)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Day Detail Modal */}
+        {selectedDate && (
+          <div className="modal-overlay" onClick={() => setSelectedDate(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+              <h3>{selectedDate}</h3>
+              {dayExpenses.length === 0 ? (
+                <p style={{ color: '#A8A29E', textAlign: 'center', padding: 20 }}>当天没有支出记录</p>
+              ) : (
+                <div className="day-detail-list">
+                  {dayExpenses.map(exp => (
+                    <div key={exp.id} className="day-detail-item">
+                      <div className="day-detail-left">
+                        <span className="day-detail-cat">{exp.category_l2}</span>
+                        <span className="day-detail-l1">{exp.category_l1}</span>
+                      </div>
+                      <span className="day-detail-amount">-¥{(exp.amount / 100).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="day-detail-total">
+                    <span>合计</span>
+                    <span className="day-detail-total-amount">
+                      -¥{dayExpenses.reduce((sum, e) => sum + e.amount, 0) / 100}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="modal-actions" style={{ marginTop: 12 }}>
+                <button className="btn-secondary" onClick={() => setSelectedDate(null)}>关闭</button>
+              </div>
+            </div>
           </div>
         )}
       </main>

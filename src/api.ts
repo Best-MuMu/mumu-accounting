@@ -79,4 +79,7 @@ export const api = {
   // Stats
   getMonthlyStats: (year: number, month: number) =>
     request<MonthlyStats>(`/api/getMonthlyStats?year=${year}&month=${month}`),
+
+  getExpensesByDate: (date: string) =>
+    request<Expense[]>(`/api/getExpensesByDate?date=${encodeURIComponent(date)}`),
 };
